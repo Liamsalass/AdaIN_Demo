@@ -38,16 +38,30 @@ style_brushstrokes_tensor = transforms.ToTensor()(style_brushstrokes).unsqueeze(
 style_chagall_marc_1_tensor = transforms.ToTensor()(style_chagall_marc_1).unsqueeze(0)
 style_the_persistence_of_memory_1931_tensor = transforms.ToTensor()(style_the_persistence_of_memory_1931).unsqueeze(0)
 
+styles = [style_stary_night_tensor, style_Andy_Warhol_97_tensor, style_brushstrokes_tensor, style_chagall_marc_1_tensor, style_the_persistence_of_memory_1931_tensor]
+style_names = ["Starry Night", "Andy Warhol", "Brushstrokes", "Chagall Marc", "Persistence of Memory"]
+alphas = [0.1, 0.5, 0.9]
+
+import cv2
+import tkinter as tk
+from PIL import Image, ImageTk
+import time
+import torch
+import torchvision.transforms as transforms
+import AdaIN_net as net
+
+# [Assuming the rest of the code for loading models and styles is above this class]
 
 class Application:
-    def __init__(self, window, window_title, video_source=0):
+    def __init__(self, window, window_title, video_source=0, initial_image_size=(150, 150)):
         self.window = window
         self.window.title(window_title)
         self.video_source = video_source
+        self.initial_image_size = initial_image_size
         self.vid = cv2.VideoCapture(video_source)
-        self.canvas = tk.Canvas(window, width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH), height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.canvas = tk.Canvas(window, width=self.vid.get(cv2.CAP_PROP_FRAME_WIDTH), height=self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.canvas.pack()
-        self.btn_snapshot=tk.Button(window, text="Snapshot", width=50, command=self.snapshot)
+        self.btn_snapshot = tk.Button(window, text="Snapshot", width=50, command=self.snapshot)
         self.btn_snapshot.pack(anchor=tk.CENTER, expand=True)
         self.delay = 15
         self.update()
@@ -56,26 +70,15 @@ class Application:
     def snapshot(self):
         ret, frame = self.vid.read()
         if ret:
-            # Save the original frame
             cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
-            # Convert the frame to PIL image and resize it
             frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             frame = transforms.Resize(size=image_size)(frame)
             frame_tensor = transforms.ToTensor()(frame).unsqueeze(0)
 
-            # Create a new window to display styled images
             new_window = tk.Toplevel(self.window)
             new_window.title("Stylized Frames")
-            new_window.grid_rowconfigure(0, weight=1)
-            new_window.grid_columnconfigure(0, weight=1)
-
-            self.stylized_images = []  # Store original stylized images
-
-            # Process and display the frame with the AdaIN model for different styles and alpha values
-            styles = [style_stary_night_tensor, style_Andy_Warhol_97_tensor, style_brushstrokes_tensor, style_chagall_marc_1_tensor, style_the_persistence_of_memory_1931_tensor]
-            style_names = ["Starry Night", "Andy Warhol", "Brushstrokes", "Chagall Marc", "Persistence of Memory"]
-            alphas = [0.1, 0.5, 0.9]
+            self.stylized_images = []
+            self.labels = []
 
             for i, style_tensor in enumerate(styles):
                 for j, alpha in enumerate(alphas):
@@ -83,38 +86,25 @@ class Application:
                         stylized_frame = model(frame_tensor.to(device), style_tensor.to(device), alpha)
                     stylized_frame = stylized_frame.squeeze(0).cpu().detach()
                     original_stylized_frame = transforms.ToPILImage()(stylized_frame)
-
-                    # Store the original stylized image
-                    self.stylized_images.append((i, j, original_stylized_frame))
-
-                    # Display the stylized frame
-                    stylized_photo = ImageTk.PhotoImage(image=original_stylized_frame)
+                    resized_stylized_frame = original_stylized_frame.resize(self.initial_image_size, Image.ANTIALIAS)
+                    stylized_photo = ImageTk.PhotoImage(image=resized_stylized_frame)
                     label = tk.Label(new_window, image=stylized_photo)
-                    label.image = stylized_photo  # Keep a reference!
+                    label.image = stylized_photo
                     label.grid(row=i, column=j)
                     tk.Label(new_window, text=f"{style_names[i]} Alpha {alpha}").grid(row=i, column=j, sticky="S")
-
-            # Bind the resize event
-            new_window.bind("<Configure>", self.on_resize)
+                    self.stylized_images.append((i, j, original_stylized_frame))
+                    self.labels.append(label)
 
     def on_resize(self, event):
-        # Resize and display the images based on the new window size
-        for i, j, original_image in self.stylized_images:
-            new_size = (event.width // len(alphas), event.height // len(styles))  # New size for each image
-            resized_image = original_image.resize(new_size, Image.ANTIALIAS)
-            resized_photo = ImageTk.PhotoImage(image=resized_image)
-            label = tk.Label(event.widget, image=resized_photo)
-            label.image = resized_photo  # Keep a reference!
-            label.grid(row=i, column=j)
-
-    # ... [rest of the class remains unchanged]
-
+        # This method is intentionally left empty to avoid resizing images.
+        pass
 
     def update(self):
         ret, frame = self.vid.read()
         if ret:
-            self.photo = ImageTk.PhotoImage(image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
-            self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+            self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.window.after(self.delay, self.update)
 
-Application(tk.Tk(), "Tkinter and OpenCV")
+
+app = Application(tk.Tk(), "Tkinter and OpenCV", initial_image_size=(300, 200))
