@@ -70,24 +70,45 @@ class Application:
             new_window.grid_rowconfigure(0, weight=1)
             new_window.grid_columnconfigure(0, weight=1)
 
+            self.stylized_images = []  # Store original stylized images
+
             # Process and display the frame with the AdaIN model for different styles and alpha values
             styles = [style_stary_night_tensor, style_Andy_Warhol_97_tensor, style_brushstrokes_tensor, style_chagall_marc_1_tensor, style_the_persistence_of_memory_1931_tensor]
             style_names = ["Starry Night", "Andy Warhol", "Brushstrokes", "Chagall Marc", "Persistence of Memory"]
             alphas = [0.1, 0.5, 0.9]
-            
+
             for i, style_tensor in enumerate(styles):
                 for j, alpha in enumerate(alphas):
                     with torch.no_grad():
                         stylized_frame = model(frame_tensor.to(device), style_tensor.to(device), alpha)
                     stylized_frame = stylized_frame.squeeze(0).cpu().detach()
-                    stylized_frame = transforms.ToPILImage()(stylized_frame)
+                    original_stylized_frame = transforms.ToPILImage()(stylized_frame)
+
+                    # Store the original stylized image
+                    self.stylized_images.append((i, j, original_stylized_frame))
 
                     # Display the stylized frame
-                    stylized_photo = ImageTk.PhotoImage(image=stylized_frame)
+                    stylized_photo = ImageTk.PhotoImage(image=original_stylized_frame)
                     label = tk.Label(new_window, image=stylized_photo)
                     label.image = stylized_photo  # Keep a reference!
                     label.grid(row=i, column=j)
                     tk.Label(new_window, text=f"{style_names[i]} Alpha {alpha}").grid(row=i, column=j, sticky="S")
+
+            # Bind the resize event
+            new_window.bind("<Configure>", self.on_resize)
+
+    def on_resize(self, event):
+        # Resize and display the images based on the new window size
+        for i, j, original_image in self.stylized_images:
+            new_size = (event.width // len(alphas), event.height // len(styles))  # New size for each image
+            resized_image = original_image.resize(new_size, Image.ANTIALIAS)
+            resized_photo = ImageTk.PhotoImage(image=resized_image)
+            label = tk.Label(event.widget, image=resized_photo)
+            label.image = resized_photo  # Keep a reference!
+            label.grid(row=i, column=j)
+
+    # ... [rest of the class remains unchanged]
+
 
     def update(self):
         ret, frame = self.vid.read()
