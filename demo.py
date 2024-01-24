@@ -65,7 +65,8 @@ class Application:
     def snapshot(self):
         ret, frame = self.vid.read()
         if ret:
-            cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            file_path = "frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg"
+            cv2.imwrite(file_path, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
             frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             frame = transforms.Resize(size=image_size)(frame)
             frame_tensor = transforms.ToTensor()(frame).unsqueeze(0)
@@ -89,6 +90,7 @@ class Application:
                     tk.Label(new_window, text=f"{style_names[i]} Alpha {alpha}").grid(row=i, column=j, sticky="S")
                     self.stylized_images.append((i, j, original_stylized_frame))
                     self.labels.append(label)
+            os.remove(file_path)
 
     def update(self):
         ret, frame = self.vid.read()
