@@ -7,6 +7,9 @@ import time
 import torch
 import torchvision.transforms as transforms 
 import AdaIN_net as net
+import os
+
+print ("Initializing...")
 
 image_size = 512
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,15 +45,7 @@ styles = [style_stary_night_tensor, style_Andy_Warhol_97_tensor, style_brushstro
 style_names = ["Starry Night", "Andy Warhol", "Brushstrokes", "Chagall Marc", "Persistence of Memory"]
 alphas = [0.1, 0.5, 0.9]
 
-import cv2
-import tkinter as tk
-from PIL import Image, ImageTk
-import time
-import torch
-import torchvision.transforms as transforms
-import AdaIN_net as net
-
-# [Assuming the rest of the code for loading models and styles is above this class]
+print('GUI Initializing...')
 
 class Application:
     def __init__(self, window, window_title, video_source=0, initial_image_size=(150, 150)):
@@ -95,16 +90,14 @@ class Application:
                     self.stylized_images.append((i, j, original_stylized_frame))
                     self.labels.append(label)
 
-    def on_resize(self, event):
-        # This method is intentionally left empty to avoid resizing images.
-        pass
-
     def update(self):
         ret, frame = self.vid.read()
         if ret:
             self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.window.after(self.delay, self.update)
+
+print ('Done!')
 
 
 app = Application(tk.Tk(), "Tkinter and OpenCV", initial_image_size=(300, 200))
